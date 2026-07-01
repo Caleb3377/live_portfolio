@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Download, Database, MessageSquare, Terminal, Mail, Send, CheckCircle } from 'lucide-react';
+import { motion, useScroll, useTransform } from 'framer-motion';
+import ScrollCanvas3D from './ScrollCanvas3D';
 
 interface HomeProps {
   onNavigateToProject: (tab: 'rag' | 'whatsapp' | 'webgen') => void;
@@ -9,6 +11,14 @@ const Home: React.FC<HomeProps> = ({ onNavigateToProject }) => {
   const [formData, setFormData] = useState({ name: '', email: '', message: '' });
   const [formSubmitted, setFormSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Scroll scrubbing transforms for the Hero section
+  const { scrollYProgress } = useScroll();
+  const heroRotateX = useTransform(scrollYProgress, [0, 0.25], [0, 8]);
+  const heroTranslateY = useTransform(scrollYProgress, [0, 0.25], [0, 50]);
+  const heroScale = useTransform(scrollYProgress, [0, 0.25], [1, 0.96]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,6 +31,27 @@ const Home: React.FC<HomeProps> = ({ onNavigateToProject }) => {
       setFormSubmitted(true);
       setFormData({ name: '', email: '', message: '' });
     }, 1500);
+  };
+
+  // Card 3D interactive tilting on mouse move
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const card = e.currentTarget;
+    const rect = card.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    // Calculate rotation angles based on cursor position relative to card center
+    const rotateX = -((y - rect.height / 2) / (rect.height / 2)) * 10; // max 10deg
+    const rotateY = ((x - rect.width / 2) / (rect.width / 2)) * 10; // max 10deg
+    
+    card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateY(-8px) scale3d(1.02, 1.02, 1.02)`;
+    card.style.boxShadow = `0 15px 35px rgba(0, 0, 0, 0.7), 0 0 25px rgba(192, 132, 252, 0.15)`;
+  };
+
+  const handleMouseLeave = (e: React.MouseEvent<HTMLDivElement>) => {
+    const card = e.currentTarget;
+    card.style.transform = 'perspective(1000px) rotateX(0deg) rotateY(0deg) translateY(0) scale3d(1, 1, 1)';
+    card.style.boxShadow = '';
   };
 
   const techStack = [
@@ -61,20 +92,36 @@ const Home: React.FC<HomeProps> = ({ onNavigateToProject }) => {
   ];
 
   return (
-    <div className="home-container">
+    <div ref={containerRef} className="home-container" style={{ perspective: 1200 }}>
+      {/* 3D background scroll-linked particle system */}
+      <ScrollCanvas3D />
+
       {/* Hero Section */}
-      <section className="hero-section glass-panel">
+      <motion.section 
+        className="hero-section glass-panel"
+        style={{
+          rotateX: heroRotateX,
+          y: heroTranslateY,
+          scale: heroScale,
+          transformStyle: 'preserve-3d'
+        }}
+      >
         <div className="hero-glow" />
         <span className="hero-badge">Disponible para nuevos retos</span>
-        <h1 className="hero-title">
+        
+        <h1 className="hero-title" style={{ transform: 'translateZ(30px)' }}>
           Hola, soy <span className="gradient-text">Yerson</span>
         </h1>
-        <h2 className="hero-subtitle">AI Developer & Web Builder</h2>
-        <p className="hero-description">
-          Especializado en diseñar e implementar soluciones avanzadas de Inteligencia Artificial: sistemas RAG robustos, agentes autónomos de voz e interfaces interactivas de última generación.
+        
+        <h2 className="hero-subtitle" style={{ transform: 'translateZ(20px)' }}>
+          AI Developer & Web Builder
+        </h2>
+        
+        <p className="hero-description" style={{ transform: 'translateZ(10px)' }}>
+          Especializado en diseñar e implementar soluciones avanzadas de Inteligencia Artificial: sistemas RAG robustos, agentes autónomos de voz e interfaces interactivas de última generación con despliegue completo en la nube.
         </p>
 
-        <div className="hero-actions">
+        <div className="hero-actions" style={{ transform: 'translateZ(15px)' }}>
           <a href="#contact" className="btn-primary">
             <Mail size={18} />
             <span>Contactar Conmigo</span>
@@ -84,7 +131,7 @@ const Home: React.FC<HomeProps> = ({ onNavigateToProject }) => {
             <span>Descargar CV</span>
           </button>
         </div>
-      </section>
+      </motion.section>
 
       {/* Projects Grid */}
       <section className="section-container">
@@ -93,7 +140,12 @@ const Home: React.FC<HomeProps> = ({ onNavigateToProject }) => {
           {projects.map((project) => {
             const Icon = project.icon;
             return (
-              <div key={project.id} className="project-card glass-panel">
+              <div 
+                key={project.id} 
+                className="project-card glass-panel interactive-3d-card"
+                onMouseMove={handleMouseMove}
+                onMouseLeave={handleMouseLeave}
+              >
                 <div className="project-header">
                   <div className="project-icon-box">
                     <Icon size={24} color="#c084fc" />
@@ -199,6 +251,7 @@ const Home: React.FC<HomeProps> = ({ onNavigateToProject }) => {
           flex-direction: column;
           gap: 60px;
           padding-bottom: 60px;
+          position: relative;
         }
 
         .hero-section {
@@ -210,6 +263,8 @@ const Home: React.FC<HomeProps> = ({ onNavigateToProject }) => {
           flex-direction: column;
           align-items: flex-start;
           gap: 20px;
+          transform-origin: center top;
+          box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
         }
 
         .hero-glow {
@@ -238,6 +293,7 @@ const Home: React.FC<HomeProps> = ({ onNavigateToProject }) => {
           font-weight: 800;
           letter-spacing: -1.5px;
           color: var(--text-primary);
+          transition: transform 0.1s ease;
         }
 
         .gradient-text {
@@ -252,6 +308,7 @@ const Home: React.FC<HomeProps> = ({ onNavigateToProject }) => {
           font-weight: 600;
           color: var(--text-secondary);
           margin-top: -10px;
+          transition: transform 0.1s ease;
         }
 
         .hero-description {
@@ -259,12 +316,14 @@ const Home: React.FC<HomeProps> = ({ onNavigateToProject }) => {
           line-height: 1.6;
           color: var(--text-secondary);
           max-width: 700px;
+          transition: transform 0.1s ease;
         }
 
         .hero-actions {
           display: flex;
           gap: 16px;
           margin-top: 10px;
+          transition: transform 0.1s ease;
         }
 
         .section-container {
@@ -308,6 +367,13 @@ const Home: React.FC<HomeProps> = ({ onNavigateToProject }) => {
           align-items: flex-start;
           gap: 16px;
           height: 100%;
+          transform-style: preserve-3d;
+          backface-visibility: hidden;
+          will-change: transform;
+        }
+
+        .interactive-3d-card {
+          transition: transform 0.1s ease, border-color 0.3s ease, box-shadow 0.3s ease;
         }
 
         .project-header {
@@ -315,6 +381,7 @@ const Home: React.FC<HomeProps> = ({ onNavigateToProject }) => {
           justify-content: space-between;
           width: 100%;
           align-items: center;
+          transform: translateZ(20px);
         }
 
         .project-icon-box {
@@ -339,6 +406,7 @@ const Home: React.FC<HomeProps> = ({ onNavigateToProject }) => {
           font-size: 20px;
           font-weight: 700;
           color: var(--text-primary);
+          transform: translateZ(30px);
         }
 
         .project-card-desc {
@@ -346,12 +414,14 @@ const Home: React.FC<HomeProps> = ({ onNavigateToProject }) => {
           line-height: 1.5;
           color: var(--text-secondary);
           flex-grow: 1;
+          transform: translateZ(15px);
         }
 
         .project-tech-tags {
           display: flex;
           flex-wrap: wrap;
           gap: 8px;
+          transform: translateZ(10px);
         }
 
         .tech-tag {
@@ -376,13 +446,13 @@ const Home: React.FC<HomeProps> = ({ onNavigateToProject }) => {
           font-family: var(--font-display);
           font-size: 14px;
           transition: var(--transition-smooth);
+          transform: translateZ(25px);
         }
 
         .btn-project-action:hover {
           background: var(--primary);
           border-color: var(--primary);
           box-shadow: 0 0 15px rgba(168, 85, 247, 0.4);
-          transform: translateY(-1px);
         }
 
         /* Tech Stack Grid */
